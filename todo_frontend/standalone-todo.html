@@ -1,0 +1,669 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Minimal Todo App (Standalone)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      /* Provided palette */
+      --primary: #1976d2;
+      --accent: #ff5252;
+      --secondary: #424242;
+
+      /* Light theme base */
+      --bg: #ffffff;
+      --bg-soft: #f7f9fc;
+      --text: #212121;
+      --muted: #6b6f76;
+      --border: #e6e8eb;
+
+      /* Derived */
+      --card: #ffffff;
+      --success: #2e7d32;
+      --warning: #f9a825;
+      --focus: rgba(25,118,210,0.35);
+      --shadow: 0 8px 24px rgba(0,0,0,0.06);
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue",
+        Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+      line-height: 1.4;
+    }
+
+    /* Layout */
+    header.app-header {
+      position: sticky;
+      top: 0;
+      background: var(--primary);
+      color: #fff;
+      z-index: 10;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .header-inner {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .title {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: 0.2px;
+      font-weight: 600;
+    }
+    .subtitle {
+      margin: 0;
+      color: rgba(255,255,255,0.85);
+      font-size: 12px;
+    }
+
+    main {
+      max-width: 800px;
+      margin: 24px auto;
+      padding: 0 16px 40px;
+    }
+
+    /* Input card */
+    .add-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+      flex-wrap: wrap;
+    }
+    .row > .field {
+      flex: 1 1 260px;
+      min-width: 180px;
+    }
+
+    .field input[type="text"] {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 12px;
+      font-size: 14px;
+      color: var(--text);
+      background: #fff;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .field input[type="text"]:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px var(--focus);
+    }
+    .field input::placeholder { color: #9aa1a9; }
+
+    .btn {
+      border: none;
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform .06s ease, box-shadow .2s, opacity .2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      user-select: none;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+      box-shadow: 0 6px 14px rgba(25,118,210,0.3);
+    }
+    .btn-primary:hover { opacity: 0.95; }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--secondary);
+    }
+
+    /* Filters */
+    .filters {
+      margin-top: 16px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .filter-btn {
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--secondary);
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .filter-btn[aria-pressed="true"] {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: rgba(25,118,210,0.06);
+    }
+
+    /* List */
+    .list {
+      margin-top: 16px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .todo {
+      display: grid;
+      grid-template-columns: 28px 1fr auto;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+    }
+    .todo.completed .todo-title {
+      text-decoration: line-through;
+      color: var(--muted);
+    }
+
+    .todo-title {
+      font-size: 15px;
+      color: var(--text);
+      word-break: break-word;
+    }
+
+    .todo-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .icon-btn {
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--secondary);
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      display: inline-grid;
+      place-items: center;
+      cursor: pointer;
+    }
+    .icon-btn:hover { background: var(--bg-soft); }
+
+    .icon {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+    }
+    /* Simple icons with CSS */
+    .icon-edit { position: relative; }
+    .icon-edit::before {
+      content: "";
+      position: absolute;
+      width: 12px; height: 2px;
+      background: currentColor;
+      transform: rotate(45deg);
+      left: 2px; top: 7px;
+      border-radius: 1px;
+    }
+    .icon-trash { position: relative; }
+    .icon-trash::before {
+      content: "";
+      position: absolute;
+      left: 3px; right: 3px; top: 5px; bottom: 2px;
+      border: 1.6px solid currentColor;
+      border-top-left-radius: 2px; border-top-right-radius: 2px;
+    }
+    .icon-trash::after {
+      content: "";
+      position: absolute;
+      left: 4px; right: 4px; top: 4px; height: 2px;
+      background: currentColor;
+      border-radius: 1px;
+    }
+    .icon-check { position: relative; }
+    .icon-check::before {
+      content: "";
+      position: absolute;
+      width: 7px; height: 3px;
+      border-left: 2px solid currentColor;
+      border-bottom: 2px solid currentColor;
+      transform: rotate(-45deg);
+      left: 4px; top: 7px;
+    }
+
+    .icon-btn.danger { color: var(--accent); border-color: #ffd1d1; background: #fff7f7; }
+    .icon-btn.success { color: var(--success); border-color: #c6e6c8; background: #f4fbf4; }
+
+    .empty {
+      margin-top: 16px;
+      background: #fff;
+      border: 1px dashed var(--border);
+      color: var(--muted);
+      border-radius: var(--radius);
+      padding: 20px;
+      text-align: center;
+    }
+
+    /* Edit mode fields for inline edit */
+    .edit-fields {
+      display: grid;
+      gap: 8px;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+    }
+    .edit-input {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 10px;
+      font-size: 14px;
+      outline: none;
+    }
+    .edit-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px var(--focus);
+    }
+
+    /* Accessibility helpers */
+    .sr-only {
+      position: absolute;
+      width: 1px; height: 1px;
+      padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0,0,0,0);
+      border: 0; white-space: nowrap;
+    }
+
+    /* Checkbox styling */
+    .check-wrap {
+      display: grid;
+      place-items: center;
+    }
+    .checkbox {
+      width: 18px; height: 18px;
+      border: 2px solid var(--primary);
+      border-radius: 6px;
+      position: relative;
+      cursor: pointer;
+    }
+    .checkbox.checked {
+      background: var(--primary);
+      border-color: var(--primary);
+    }
+    .checkbox.checked::after {
+      content: "";
+      position: absolute;
+      width: 8px; height: 4px;
+      border-left: 2px solid #fff;
+      border-bottom: 2px solid #fff;
+      transform: rotate(-45deg);
+      left: 4px; top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <header class="app-header" role="banner">
+    <div class="header-inner">
+      <div>
+        <h1 class="title">Todo</h1>
+        <p class="subtitle">Minimalistic • Light theme • No backend</p>
+      </div>
+      <button id="clearAll" class="btn btn-outline" title="Clear all todos">Clear</button>
+    </div>
+  </header>
+
+  <main role="main">
+    <section aria-labelledby="add-section-heading" class="add-card" >
+      <h2 class="sr-only" id="add-section-heading">Add a new todo</h2>
+      <form id="addForm" class="row" autocomplete="off" novalidate>
+        <div class="field">
+          <label class="sr-only" for="todoInput">Todo title</label>
+          <input id="todoInput" type="text" placeholder="What needs to be done?" aria-label="Todo title" />
+        </div>
+        <div class="field" style="flex:0 0 auto;">
+          <button id="addBtn" class="btn btn-primary" type="submit" aria-label="Add todo">
+            <span class="icon icon-check" aria-hidden="true"></span>
+            Add
+          </button>
+        </div>
+      </form>
+
+      <div class="filters" role="toolbar" aria-label="Todo filters">
+        <button class="filter-btn" data-filter="all" aria-pressed="true">All</button>
+        <button class="filter-btn" data-filter="active" aria-pressed="false">Active</button>
+        <button class="filter-btn" data-filter="completed" aria-pressed="false">Completed</button>
+      </div>
+    </section>
+
+    <section aria-labelledby="list-heading">
+      <h2 class="sr-only" id="list-heading">Todo list</h2>
+      <div id="list" class="list" role="list"></div>
+      <div id="emptyState" class="empty" hidden>No todos yet. Add one above to get started.</div>
+    </section>
+  </main>
+
+  <script>
+    // Simple unique id generator
+    const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+    const STORAGE_KEY = "standalone_todos_v1";
+    const $ = (sel, root=document) => root.querySelector(sel);
+    const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+
+    // PUBLIC_INTERFACE
+    function loadTodos() {
+      /** Load todos array from localStorage or return [] if not found. */
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    // PUBLIC_INTERFACE
+    function saveTodos(todos) {
+      /** Persist todos array into localStorage. */
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
+      } catch (e) {
+        // ignore storage failures
+      }
+    }
+
+    let state = {
+      todos: loadTodos(),
+      filter: "all", // all | active | completed
+      editingId: null, // id of item currently being edited
+    };
+
+    // PUBLIC_INTERFACE
+    function addTodo(title) {
+      /** Add a new todo with the provided title. */
+      const t = (title || "").trim();
+      if (!t) return;
+      state.todos.unshift({ id: uid(), title: t, completed: false });
+      saveTodos(state.todos);
+      render();
+    }
+
+    // PUBLIC_INTERFACE
+    function deleteTodo(id) {
+      /** Delete a todo by id. */
+      state.todos = state.todos.filter(t => t.id !== id);
+      saveTodos(state.todos);
+      render();
+    }
+
+    // PUBLIC_INTERFACE
+    function toggleTodo(id) {
+      /** Toggle completed state of a todo by id. */
+      const todo = state.todos.find(t => t.id === id);
+      if (!todo) return;
+      todo.completed = !todo.completed;
+      saveTodos(state.todos);
+      render();
+    }
+
+    // PUBLIC_INTERFACE
+    function startEdit(id) {
+      /** Enter edit mode for a todo by id. */
+      state.editingId = id;
+      render();
+      // focus the input for better UX
+      const input = document.getElementById("edit-input-" + id);
+      if (input) {
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+      }
+    }
+
+    // PUBLIC_INTERFACE
+    function confirmEdit(id, nextTitle) {
+      /** Confirm edit; update title and exit edit mode. */
+      const t = state.todos.find(x => x.id === id);
+      if (!t) return;
+      const clean = (nextTitle || "").trim();
+      if (clean) t.title = clean;
+      state.editingId = null;
+      saveTodos(state.todos);
+      render();
+    }
+
+    // PUBLIC_INTERFACE
+    function cancelEdit() {
+      /** Cancel edit mode without saving changes. */
+      state.editingId = null;
+      render();
+    }
+
+    function setFilter(next) {
+      state.filter = next;
+      // Update buttons pressed state
+      $$(".filter-btn").forEach(btn => {
+        btn.setAttribute("aria-pressed", btn.dataset.filter === next ? "true" : "false");
+      });
+      render();
+    }
+
+    function filteredTodos() {
+      switch (state.filter) {
+        case "active": return state.todos.filter(t => !t.completed);
+        case "completed": return state.todos.filter(t => t.completed);
+        default: return state.todos;
+      }
+    }
+
+    function renderEmpty(isEmpty) {
+      const empty = $("#emptyState");
+      if (!empty) return;
+      empty.hidden = !isEmpty;
+    }
+
+    // PUBLIC_INTERFACE
+    function render() {
+      /** Render the list based on current state and filter. */
+      const list = $("#list");
+      if (!list) return;
+
+      const items = filteredTodos();
+      list.innerHTML = "";
+
+      if (items.length === 0) {
+        renderEmpty(true);
+        return;
+      }
+      renderEmpty(false);
+
+      items.forEach(item => {
+        const li = document.createElement("div");
+        li.className = "todo" + (item.completed ? " completed" : "");
+        li.setAttribute("role", "listitem");
+        li.dataset.id = item.id;
+
+        // Checkbox
+        const checkWrap = document.createElement("div");
+        checkWrap.className = "check-wrap";
+        const box = document.createElement("div");
+        box.className = "checkbox" + (item.completed ? " checked" : "");
+        box.tabIndex = 0;
+        box.setAttribute("role", "checkbox");
+        box.setAttribute("aria-checked", item.completed ? "true" : "false");
+        box.title = item.completed ? "Mark as incomplete" : "Mark as complete";
+        box.addEventListener("click", () => toggleTodo(item.id));
+        box.addEventListener("keydown", (e) => {
+          if (e.key === " " || e.key === "Enter") {
+            e.preventDefault();
+            toggleTodo(item.id);
+          }
+        });
+        checkWrap.appendChild(box);
+
+        // Middle column
+        const center = document.createElement("div");
+
+        if (state.editingId === item.id) {
+          // Inline edit mode
+          const editWrap = document.createElement("div");
+          editWrap.className = "edit-fields";
+
+          const input = document.createElement("input");
+          input.type = "text";
+          input.value = item.title;
+          input.className = "edit-input";
+          input.id = "edit-input-" + item.id;
+          input.setAttribute("aria-label", "Edit todo");
+          input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+              confirmEdit(item.id, input.value);
+            } else if (e.key === "Escape") {
+              cancelEdit();
+            }
+          });
+
+          const confirmBtn = document.createElement("button");
+          confirmBtn.className = "btn btn-primary";
+          confirmBtn.type = "button";
+          confirmBtn.textContent = "Save";
+          confirmBtn.addEventListener("click", () => confirmEdit(item.id, input.value));
+
+          editWrap.appendChild(input);
+          editWrap.appendChild(confirmBtn);
+          center.appendChild(editWrap);
+        } else {
+          const title = document.createElement("div");
+          title.className = "todo-title";
+          title.textContent = item.title;
+          center.appendChild(title);
+        }
+
+        // Actions
+        const actions = document.createElement("div");
+        actions.className = "todo-actions";
+
+        if (state.editingId === item.id) {
+          const cancelBtn = document.createElement("button");
+          cancelBtn.type = "button";
+          cancelBtn.className = "icon-btn";
+          cancelBtn.title = "Cancel edit";
+          cancelBtn.addEventListener("click", cancelEdit);
+          const iconX = document.createElement("span");
+          iconX.className = "icon";
+          // A simple X using borders
+          iconX.style.position = "relative";
+          iconX.style.width = "14px";
+          iconX.style.height = "14px";
+          iconX.style.display = "inline-block";
+          iconX.innerHTML = `
+            <span style="
+              position:absolute;left:6px;top:0;width:2px;height:14px;background:currentColor;transform:rotate(45deg);border-radius:1px;"></span>
+            <span style="
+              position:absolute;left:6px;top:0;width:2px;height:14px;background:currentColor;transform:rotate(-45deg);border-radius:1px;"></span>
+          `;
+          cancelBtn.appendChild(iconX);
+          actions.appendChild(cancelBtn);
+        } else {
+          const editBtn = document.createElement("button");
+          editBtn.type = "button";
+          editBtn.className = "icon-btn";
+          editBtn.title = "Edit";
+          editBtn.addEventListener("click", () => startEdit(item.id));
+          const editIcon = document.createElement("span");
+          editIcon.className = "icon icon-edit";
+          editBtn.appendChild(editIcon);
+
+          const toggleBtn = document.createElement("button");
+          toggleBtn.type = "button";
+          toggleBtn.className = "icon-btn success";
+          toggleBtn.title = item.completed ? "Mark as incomplete" : "Mark as complete";
+          toggleBtn.addEventListener("click", () => toggleTodo(item.id));
+          const checkIcon = document.createElement("span");
+          checkIcon.className = "icon icon-check";
+          toggleBtn.appendChild(checkIcon);
+
+          const delBtn = document.createElement("button");
+          delBtn.type = "button";
+          delBtn.className = "icon-btn danger";
+          delBtn.title = "Delete";
+          delBtn.addEventListener("click", () => {
+            if (confirm("Delete this todo?")) deleteTodo(item.id);
+          });
+          const trashIcon = document.createElement("span");
+          trashIcon.className = "icon icon-trash";
+          delBtn.appendChild(trashIcon);
+
+          actions.appendChild(editBtn);
+          actions.appendChild(toggleBtn);
+          actions.appendChild(delBtn);
+        }
+
+        li.appendChild(checkWrap);
+        li.appendChild(center);
+        li.appendChild(actions);
+        list.appendChild(li);
+      });
+    }
+
+    // Init bindings
+    function init() {
+      const addForm = $("#addForm");
+      const input = $("#todoInput");
+      const clearBtn = $("#clearAll");
+
+      addForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        addTodo(input.value);
+        input.value = "";
+        input.focus();
+      });
+
+      clearBtn.addEventListener("click", () => {
+        if (!state.todos.length) return;
+        if (confirm("Clear all todos?")) {
+          state.todos = [];
+          saveTodos(state.todos);
+          render();
+        }
+      });
+
+      $$(".filter-btn").forEach(btn => {
+        btn.addEventListener("click", () => setFilter(btn.dataset.filter));
+      });
+
+      // Accessibility: Enter to add when input focused
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          addBtn.click();
+        }
+      });
+
+      render();
+    }
+
+    const addBtn = document.getElementById("addBtn");
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", init);
+    } else {
+      init();
+    }
+  </script>
+</body>
+</html>
